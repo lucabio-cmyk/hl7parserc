@@ -29,13 +29,21 @@ Directory.CreateDirectory(logPath);
 
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
+    .MinimumLevel.Verbose()
     .WriteTo.File(Path.Combine(logPath, "bridge-.log"), rollingInterval: RollingInterval.Day, retainedFileCountLimit: 30)
+    .WriteTo.File(
+        Path.Combine(logPath, "events-.log"),
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 30,
+        restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Verbose,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({SourceContext}) {Message:lj}{NewLine}{Exception}")
     .CreateLogger();
 
 builder.Services.AddSerilog();
 
 var app = builder.Build();
 
+app.UseSerilogRequestLogging();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 

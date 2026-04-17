@@ -12,6 +12,7 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
     {
         var destination = Path.Combine(_options.Folders.Processing, Path.GetFileName(incomingPath));
         File.Move(incomingPath, destination, overwrite: true);
+        _logger.LogInformation("Claimed file for processing: {Source} -> {Destination}", incomingPath, destination);
         return destination;
     }
 
@@ -32,6 +33,7 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
 
     public bool IsFileStable(string filePath, TimeSpan stableDuration, TimeSpan probeInterval, CancellationToken cancellationToken)
     {
+        _logger.LogDebug("Checking file stability for {File}.", filePath);
         var stableUntil = DateTime.UtcNow + stableDuration;
         long lastLength = -1;
         DateTime lastWrite = DateTime.MinValue;
@@ -43,6 +45,7 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
             var info = new FileInfo(filePath);
             if (!info.Exists)
             {
+                _logger.LogWarning("File disappeared during stability check: {File}", filePath);
                 return false;
             }
 
@@ -59,10 +62,12 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
         try
         {
             using var stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.None);
+            _logger.LogDebug("File is stable and unlocked: {File}.", filePath);
             return stream.Length >= 0;
         }
         catch
         {
+            _logger.LogDebug("File still locked/not stable: {File}.", filePath);
             return false;
         }
     }
@@ -78,5 +83,6 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
         var outName = $"{DateTime.UtcNow:yyyyMMddHHmmssfff}_{Path.GetFileNameWithoutExtension(sourceFileName)}_{safeSample}.hl7";
         var fullPath = Path.Combine(_options.Folders.Hl7Archive, outName);
         File.WriteAllText(fullPath, hl7Payload);
+        _logger.LogInformation("Archived HL7 payload for sample {Sample} to {Path}.", sample, fullPath);
     }
 }

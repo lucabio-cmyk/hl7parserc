@@ -21,15 +21,18 @@ public sealed class InstrumentBridgeWorker(
         {
             try
             {
+                logger.LogDebug("Starting processing cycle.");
                 var files = Directory
                     .EnumerateFiles(_options.Folders.Incoming, "*.xlsx", SearchOption.TopDirectoryOnly)
                     .OrderBy(File.GetCreationTimeUtc)
                     .Take(_options.Processing.MaxFilesPerCycle)
                     .ToList();
+                logger.LogDebug("Cycle discovered {Count} file(s).", files.Count);
 
                 foreach (var incoming in files)
                 {
                     stoppingToken.ThrowIfCancellationRequested();
+                    logger.LogInformation("Processing incoming file {File}.", incoming);
                     await ProcessIncomingAsync(incoming, stoppingToken);
                 }
             }
@@ -66,6 +69,7 @@ public sealed class InstrumentBridgeWorker(
             processingPath = stateManager.ClaimForProcessing(incomingPath);
             await dispatchService.ProcessFileAsync(processingPath, cancellationToken);
             stateManager.MarkSent(processingPath);
+            logger.LogInformation("Processing completed for file {File}.", incomingPath);
         }
         catch (Exception ex)
         {
