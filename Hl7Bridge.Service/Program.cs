@@ -1,3 +1,4 @@
+using Hl7Bridge.Service;
 using Hl7Bridge.Service.Configuration;
 using Hl7Bridge.Service.Excel;
 using Hl7Bridge.Service.Hl7;
