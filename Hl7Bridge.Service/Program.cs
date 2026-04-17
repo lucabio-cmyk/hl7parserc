@@ -8,12 +8,13 @@ using Hl7Bridge.Service.State;
 using Microsoft.Extensions.Options;
 using Serilog;
 
-var builder = Host.CreateApplicationBuilder(args);
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddWindowsService(options => options.ServiceName = "Hl7InstrumentBridge")
     .AddOptions<BridgeOptions>().Bind(builder.Configuration.GetSection("Bridge")).ValidateDataAnnotations().ValidateOnStart();
 
+builder.Services.AddSingleton<BridgeConfigurationStore>();
 builder.Services.AddSingleton<IExcelTargetParser, ClosedXmlTargetParser>();
 builder.Services.AddSingleton<IResultMapper, ResultMapper>();
 builder.Services.AddSingleton<IHl7MessageBuilder, Hl7MessageBuilder>();
@@ -35,8 +36,46 @@ builder.Services.AddSerilog();
 
 var app = builder.Build();
 
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
+app.MapGet("/api/config", (BridgeConfigurationStore store) => Results.Ok(store.LoadCurrent()));
+
+app.MapPut("/api/config", (BridgeOptions options, BridgeConfigurationStore store) =>
+{
+    var result = store.Save(options);
+    return result.IsValid ? Results.Ok(result) : Results.BadRequest(result);
+});
+
+app.MapGet("/api/status", (IOptions<BridgeOptions> options) =>
+{
+    var current = options.Value;
+
+    var dto = new BridgeStatusDto(
+        DateTime.UtcNow.ToString("O"),
+        CountFiles(current.Folders.Incoming),
+        CountFiles(current.Folders.Processing),
+        CountFiles(current.Folders.Sent),
+        CountFiles(current.Folders.Error),
+        current.Lis.Host,
+        current.Lis.Port,
+        current.Folders.Hl7ArchiveEnabled);
+
+    return Results.Ok(dto);
+});
+
 await EnsureFoldersAsync(app.Services);
 await app.RunAsync();
+
+static int CountFiles(string folder)
+{
+    if (!Directory.Exists(folder))
+    {
+        return 0;
+    }
+
+    return Directory.EnumerateFiles(folder, "*.xlsx", SearchOption.TopDirectoryOnly).Count();
+}
 
 static async Task EnsureFoldersAsync(IServiceProvider services)
 {

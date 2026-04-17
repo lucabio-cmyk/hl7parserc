@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HL7 Bridge GUI</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f7f9fc; color: #1f2937; }
+    .container { max-width: 1080px; margin: 24px auto; padding: 0 16px; }
+    .card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    h1, h2 { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; }
+    label { display: block; font-size: 12px; margin-bottom: 4px; color:#374151; }
+    input, textarea { width: 100%; box-sizing: border-box; padding: 8px; border:1px solid #d1d5db; border-radius: 8px; }
+    textarea { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    button { border: 0; background:#2563eb; color:#fff; padding:10px 14px; border-radius:8px; cursor:pointer; }
+    button:disabled { opacity:0.5; cursor:wait; }
+    .status { display:grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+    .pill { background:#eff6ff; padding:12px; border-radius:8px; font-weight:600; }
+    .ok { color:#166534; }
+    .err { color:#991b1b; white-space:pre-wrap; }
+    small { color:#6b7280; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>HL7 Instrument Bridge - GUI</h1>
+
+  <div class="card">
+    <h2>Stato servizio</h2>
+    <div id="status" class="status"></div>
+    <small id="statusTime"></small>
+  </div>
+
+  <div class="card">
+    <h2>Configurazione rapida</h2>
+    <div class="grid">
+      <div><label>LIS Host</label><input id="lisHost"/></div>
+      <div><label>LIS Port</label><input id="lisPort" type="number"/></div>
+      <div><label>Poll Interval (ms)</label><input id="pollInterval" type="number"/></div>
+      <div><label>Max files per cycle</label><input id="maxFiles" type="number"/></div>
+      <div><label>Incoming folder</label><input id="incomingFolder"/></div>
+      <div><label>Sent folder</label><input id="sentFolder"/></div>
+    </div>
+    <p><small>Per edit avanzato usa JSON completo sotto.</small></p>
+  </div>
+
+  <div class="card">
+    <h2>Configurazione completa (Bridge)</h2>
+    <textarea id="fullConfig"></textarea>
+    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+      <button id="reloadBtn">Ricarica</button>
+      <button id="saveBtn">Salva configurazione</button>
+      <span id="result"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentConfig = null;
+
+  async function loadStatus() {
+    const res = await fetch('/api/status');
+    const st = await res.json();
+    const status = document.getElementById('status');
+    status.innerHTML = `
+      <div class="pill">Incoming: ${st.incomingFiles}</div>
+      <div class="pill">Processing: ${st.processingFiles}</div>
+      <div class="pill">Sent: ${st.sentFiles}</div>
+      <div class="pill">Error: ${st.errorFiles}</div>
+      <div class="pill">LIS: ${st.lisHost}:${st.lisPort}</div>
+      <div class="pill">Archive: ${st.hl7ArchiveEnabled ? 'ON' : 'OFF'}</div>`;
+    document.getElementById('statusTime').textContent = `UTC: ${st.serviceUtcTime}`;
+  }
+
+  function syncQuickForm(cfg) {
+    document.getElementById('lisHost').value = cfg.lis.host;
+    document.getElementById('lisPort').value = cfg.lis.port;
+    document.getElementById('pollInterval').value = cfg.processing.pollIntervalMs;
+    document.getElementById('maxFiles').value = cfg.processing.maxFilesPerCycle;
+    document.getElementById('incomingFolder').value = cfg.folders.incoming;
+    document.getElementById('sentFolder').value = cfg.folders.sent;
+  }
+
+  function applyQuickFormToConfig(cfg) {
+    cfg.lis.host = document.getElementById('lisHost').value;
+    cfg.lis.port = Number(document.getElementById('lisPort').value);
+    cfg.processing.pollIntervalMs = Number(document.getElementById('pollInterval').value);
+    cfg.processing.maxFilesPerCycle = Number(document.getElementById('maxFiles').value);
+    cfg.folders.incoming = document.getElementById('incomingFolder').value;
+    cfg.folders.sent = document.getElementById('sentFolder').value;
+  }
+
+  async function loadConfig() {
+    const res = await fetch('/api/config');
+    currentConfig = await res.json();
+    syncQuickForm(currentConfig);
+    document.getElementById('fullConfig').value = JSON.stringify(currentConfig, null, 2);
+  }
+
+  async function saveConfig() {
+    const result = document.getElementById('result');
+    const saveBtn = document.getElementById('saveBtn');
+    result.textContent = '';
+    saveBtn.disabled = true;
+
+    try {
+      let payload = JSON.parse(document.getElementById('fullConfig').value);
+      applyQuickFormToConfig(payload);
+
+      const res = await fetch('/api/config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        result.className = 'ok';
+        result.textContent = 'Configurazione salvata. Riavvia il servizio per applicare eventuali opzioni critiche.';
+        await loadConfig();
+        await loadStatus();
+      } else {
+        const err = await res.json();
+        result.className = 'err';
+        result.textContent = 'Errore validazione:\n' + (err.errors || []).join('\n');
+      }
+    } catch (e) {
+      result.className = 'err';
+      result.textContent = 'JSON non valido: ' + e.message;
+    } finally {
+      saveBtn.disabled = false;
+    }
+  }
+
+  document.getElementById('reloadBtn').addEventListener('click', async () => {
+    await loadConfig();
+    await loadStatus();
+  });
+
+  document.getElementById('saveBtn').addEventListener('click', saveConfig);
+
+  (async function init() {
+    await loadConfig();
+    await loadStatus();
+    setInterval(loadStatus, 5000);
+  })();
+</script>
+</body>
+</html>
