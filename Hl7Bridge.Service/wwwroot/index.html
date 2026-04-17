@@ -5,107 +5,460 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>HL7 Bridge GUI</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; background: #f7f9fc; color: #1f2937; }
-    .container { max-width: 1080px; margin: 24px auto; padding: 0 16px; }
-    .card { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
-    h1, h2 { margin-top: 0; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 12px; }
-    label { display: block; font-size: 12px; margin-bottom: 4px; color:#374151; }
-    input, textarea { width: 100%; box-sizing: border-box; padding: 8px; border:1px solid #d1d5db; border-radius: 8px; }
-    textarea { min-height: 140px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    button { border: 0; background:#2563eb; color:#fff; padding:10px 14px; border-radius:8px; cursor:pointer; }
-    button:disabled { opacity:0.5; cursor:wait; }
-    .status { display:grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
-    .pill { background:#eff6ff; padding:12px; border-radius:8px; font-weight:600; }
-    .ok { color:#166534; }
-    .err { color:#991b1b; white-space:pre-wrap; }
-    small { color:#6b7280; }
+    :root {
+      --bg: #f3f4f6;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --text: #111827;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --success: #166534;
+      --danger: #b91c1c;
+      --warning: #92400e;
+      --border: #d1d5db;
+      --border-soft: #e5e7eb;
+      --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+      --radius-lg: 14px;
+      --radius-md: 10px;
+      --radius-sm: 8px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% -20%, #dbeafe 0, transparent 35%),
+        radial-gradient(circle at 100% 0%, #e0e7ff 0, transparent 30%),
+        var(--bg);
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 24px auto;
+      padding: 0 16px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--panel);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      box-shadow: var(--shadow);
+    }
+
+    h1, h2, h3 { margin: 0; }
+
+    h1 {
+      font-size: clamp(1.2rem, 1rem + 1vw, 1.7rem);
+      letter-spacing: 0.2px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eff6ff;
+      color: #1e3a8a;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.86rem;
+      font-weight: 600;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #16a34a;
+      box-shadow: 0 0 0 6px rgba(22, 163, 74, 0.12);
+    }
+
+    .card {
+      background: var(--panel);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      gap: 8px;
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+    }
+
+    .metric {
+      background: linear-gradient(180deg, #ffffff, #f8fafc);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+
+    .metric small {
+      display: block;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .metric strong {
+      font-size: 1rem;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .time {
+      color: var(--muted);
+      font-size: 0.88rem;
+      margin-top: 10px;
+      display: inline-block;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.82rem;
+      color: #374151;
+      font-weight: 600;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 9px 10px;
+      font: inherit;
+      color: var(--text);
+      background: #fff;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+    }
+
+    textarea {
+      min-height: 250px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.86rem;
+      background: #f8fafc;
+    }
+
+    .toolbar {
+      margin-top: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button {
+      border: 1px solid transparent;
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 0.08s ease, background 0.15s ease;
+    }
+
+    button:hover:not(:disabled) { background: var(--primary-dark); }
+    button:active:not(:disabled) { transform: translateY(1px); }
+    button:disabled { opacity: 0.6; cursor: wait; }
+
+    .btn-secondary {
+      background: #fff;
+      border-color: var(--border);
+      color: #1f2937;
+    }
+
+    .btn-secondary:hover:not(:disabled) { background: #f9fafb; }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: #111827;
+    }
+
+    .btn-warning:hover:not(:disabled) { background: #d97706; color: #fff; }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.86rem;
+      margin-top: 8px;
+      line-height: 1.45;
+    }
+
+    .result {
+      min-height: 1.2em;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+
+    .ok { color: var(--success); }
+    .err { color: var(--danger); white-space: pre-wrap; }
+    .warn { color: var(--warning); }
+
+    .sync-indicator {
+      font-size: 0.82rem;
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      padding: 6px 10px;
+      border-radius: var(--radius-sm);
+      background: var(--panel-soft);
+    }
+
+    .sticky-help {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      max-width: min(420px, calc(100vw - 32px));
+      background: rgba(17, 24, 39, 0.95);
+      color: #f9fafb;
+      border-radius: var(--radius-md);
+      padding: 12px;
+      font-size: 0.85rem;
+      line-height: 1.45;
+      box-shadow: var(--shadow);
+    }
+
+    .sticky-help button {
+      margin-top: 8px;
+      width: 100%;
+      background: #374151;
+      border: 1px solid #4b5563;
+    }
+
+    @media (max-width: 720px) {
+      .sticky-help {
+        position: static;
+        margin: 0 16px 16px;
+      }
+    }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>HL7 Instrument Bridge - GUI</h1>
-
-  <div class="card">
-    <h2>Stato servizio</h2>
-    <div id="status" class="status"></div>
-    <small id="statusTime"></small>
+  <div class="header">
+    <h1>HL7 Instrument Bridge</h1>
+    <span class="badge" id="liveBadge"><span class="dot"></span>Aggiornamento stato attivo</span>
   </div>
 
   <div class="card">
-    <h2>Configurazione rapida</h2>
-    <div class="grid">
-      <div><label>LIS Host</label><input id="lisHost"/></div>
-      <div><label>LIS Port</label><input id="lisPort" type="number"/></div>
-      <div><label>Poll Interval (ms)</label><input id="pollInterval" type="number"/></div>
-      <div><label>Max files per cycle</label><input id="maxFiles" type="number"/></div>
-      <div><label>Incoming folder</label><input id="incomingFolder"/></div>
-      <div><label>Sent folder</label><input id="sentFolder"/></div>
+    <div class="card-head">
+      <h2>Stato servizio</h2>
+      <button class="btn-secondary" id="refreshStatusBtn">Aggiorna ora</button>
     </div>
-    <p><small>Per edit avanzato usa JSON completo sotto.</small></p>
+    <div id="status" class="status-grid"></div>
+    <small id="statusTime" class="time"></small>
   </div>
 
   <div class="card">
-    <h2>Configurazione completa (Bridge)</h2>
-    <textarea id="fullConfig"></textarea>
-    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-      <button id="reloadBtn">Ricarica</button>
+    <div class="card-head">
+      <h2>Configurazione rapida</h2>
+      <button class="btn-secondary" id="syncFromJsonBtn">Sincronizza da JSON</button>
+    </div>
+    <div class="grid">
+      <div class="field"><label for="lisHost">LIS Host</label><input id="lisHost"/></div>
+      <div class="field"><label for="lisPort">LIS Port</label><input id="lisPort" type="number" min="1" max="65535"/></div>
+      <div class="field"><label for="pollInterval">Poll Interval (ms)</label><input id="pollInterval" type="number" min="100"/></div>
+      <div class="field"><label for="maxFiles">Max files per cycle</label><input id="maxFiles" type="number" min="1"/></div>
+      <div class="field"><label for="incomingFolder">Incoming folder</label><input id="incomingFolder"/></div>
+      <div class="field"><label for="sentFolder">Sent folder</label><input id="sentFolder"/></div>
+    </div>
+    <p class="hint">I campi rapidi sovrascrivono i valori corrispondenti nel JSON durante il salvataggio.</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>Configurazione completa (Bridge)</h2>
+      <span class="sync-indicator" id="syncIndicator">JSON sincronizzato</span>
+    </div>
+    <textarea id="fullConfig" spellcheck="false"></textarea>
+    <div class="toolbar">
+      <button id="reloadBtn" class="btn-secondary">Ricarica</button>
+      <button id="formatBtn" class="btn-warning">Formatta JSON</button>
       <button id="saveBtn">Salva configurazione</button>
-      <span id="result"></span>
+      <span id="result" class="result" aria-live="polite"></span>
     </div>
   </div>
 </div>
 
+<div class="sticky-help" id="helpBox">
+  <strong>Consiglio rapido</strong><br />
+  Se modifichi il JSON a mano, clicca <em>Sincronizza da JSON</em> per aggiornare i campi rapidi e validare la struttura.
+  <button id="closeHelpBtn" class="btn-secondary">Chiudi suggerimento</button>
+</div>
+
 <script>
+  const statusEl = document.getElementById('status');
+  const statusTimeEl = document.getElementById('statusTime');
+  const resultEl = document.getElementById('result');
+  const saveBtn = document.getElementById('saveBtn');
+  const fullConfigEl = document.getElementById('fullConfig');
+  const syncIndicatorEl = document.getElementById('syncIndicator');
+
   let currentConfig = null;
+  let statusTimer = null;
+  let isDirtyJson = false;
+
+  function setResult(message, type) {
+    resultEl.className = `result ${type || ''}`.trim();
+    resultEl.textContent = message || '';
+  }
+
+  function renderStatusCard(label, value) {
+    return `<div class="metric"><small>${label}</small><strong>${value ?? 'n/d'}</strong></div>`;
+  }
 
   async function loadStatus() {
-    const res = await fetch('/api/status');
-    const st = await res.json();
-    const status = document.getElementById('status');
-    status.innerHTML = `
-      <div class="pill">Incoming: ${st.incomingFiles}</div>
-      <div class="pill">Processing: ${st.processingFiles}</div>
-      <div class="pill">Sent: ${st.sentFiles}</div>
-      <div class="pill">Error: ${st.errorFiles}</div>
-      <div class="pill">LIS: ${st.lisHost}:${st.lisPort}</div>
-      <div class="pill">Archive: ${st.hl7ArchiveEnabled ? 'ON' : 'OFF'}</div>`;
-    document.getElementById('statusTime').textContent = `UTC: ${st.serviceUtcTime}`;
+    try {
+      const res = await fetch('/api/status');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+
+      const st = await res.json();
+      statusEl.innerHTML = [
+        renderStatusCard('Incoming', st.incomingFiles),
+        renderStatusCard('Processing', st.processingFiles),
+        renderStatusCard('Sent', st.sentFiles),
+        renderStatusCard('Error', st.errorFiles),
+        renderStatusCard('LIS', `${st.lisHost}:${st.lisPort}`),
+        renderStatusCard('Archive', st.hl7ArchiveEnabled ? 'ON' : 'OFF')
+      ].join('');
+
+      statusTimeEl.textContent = `Aggiornato (UTC): ${st.serviceUtcTime}`;
+    } catch (err) {
+      statusEl.innerHTML = renderStatusCard('Stato', 'Errore nel caricamento');
+      statusTimeEl.textContent = `Dettaglio: ${err.message}`;
+      setResult('Impossibile leggere lo stato del servizio.', 'warn');
+    }
+  }
+
+  function readQuickForm() {
+    return {
+      lisHost: document.getElementById('lisHost').value.trim(),
+      lisPort: Number(document.getElementById('lisPort').value),
+      pollInterval: Number(document.getElementById('pollInterval').value),
+      maxFiles: Number(document.getElementById('maxFiles').value),
+      incomingFolder: document.getElementById('incomingFolder').value.trim(),
+      sentFolder: document.getElementById('sentFolder').value.trim()
+    };
+  }
+
+  function validateQuickValues(values) {
+    const errors = [];
+
+    if (!values.lisHost) errors.push('LIS Host obbligatorio.');
+    if (!Number.isInteger(values.lisPort) || values.lisPort < 1 || values.lisPort > 65535) {
+      errors.push('LIS Port deve essere tra 1 e 65535.');
+    }
+    if (!Number.isInteger(values.pollInterval) || values.pollInterval < 100) {
+      errors.push('Poll Interval deve essere almeno 100 ms.');
+    }
+    if (!Number.isInteger(values.maxFiles) || values.maxFiles < 1) {
+      errors.push('Max files per cycle deve essere almeno 1.');
+    }
+    if (!values.incomingFolder) errors.push('Incoming folder obbligatoria.');
+    if (!values.sentFolder) errors.push('Sent folder obbligatoria.');
+
+    return errors;
   }
 
   function syncQuickForm(cfg) {
-    document.getElementById('lisHost').value = cfg.lis.host;
-    document.getElementById('lisPort').value = cfg.lis.port;
-    document.getElementById('pollInterval').value = cfg.processing.pollIntervalMs;
-    document.getElementById('maxFiles').value = cfg.processing.maxFilesPerCycle;
-    document.getElementById('incomingFolder').value = cfg.folders.incoming;
-    document.getElementById('sentFolder').value = cfg.folders.sent;
+    document.getElementById('lisHost').value = cfg?.lis?.host ?? '';
+    document.getElementById('lisPort').value = cfg?.lis?.port ?? '';
+    document.getElementById('pollInterval').value = cfg?.processing?.pollIntervalMs ?? '';
+    document.getElementById('maxFiles').value = cfg?.processing?.maxFilesPerCycle ?? '';
+    document.getElementById('incomingFolder').value = cfg?.folders?.incoming ?? '';
+    document.getElementById('sentFolder').value = cfg?.folders?.sent ?? '';
   }
 
   function applyQuickFormToConfig(cfg) {
-    cfg.lis.host = document.getElementById('lisHost').value;
-    cfg.lis.port = Number(document.getElementById('lisPort').value);
-    cfg.processing.pollIntervalMs = Number(document.getElementById('pollInterval').value);
-    cfg.processing.maxFilesPerCycle = Number(document.getElementById('maxFiles').value);
-    cfg.folders.incoming = document.getElementById('incomingFolder').value;
-    cfg.folders.sent = document.getElementById('sentFolder').value;
+    cfg.lis = cfg.lis || {};
+    cfg.processing = cfg.processing || {};
+    cfg.folders = cfg.folders || {};
+
+    const formValues = readQuickForm();
+    const errors = validateQuickValues(formValues);
+    if (errors.length) {
+      throw new Error(errors.join('\n'));
+    }
+
+    cfg.lis.host = formValues.lisHost;
+    cfg.lis.port = formValues.lisPort;
+    cfg.processing.pollIntervalMs = formValues.pollInterval;
+    cfg.processing.maxFilesPerCycle = formValues.maxFiles;
+    cfg.folders.incoming = formValues.incomingFolder;
+    cfg.folders.sent = formValues.sentFolder;
+  }
+
+  function markJsonDirty(isDirty) {
+    isDirtyJson = isDirty;
+    syncIndicatorEl.textContent = isDirty ? 'JSON modificato manualmente' : 'JSON sincronizzato';
+    syncIndicatorEl.style.color = isDirty ? 'var(--warning)' : 'var(--muted)';
   }
 
   async function loadConfig() {
     const res = await fetch('/api/config');
+    if (!res.ok) {
+      throw new Error(`Impossibile caricare la configurazione (HTTP ${res.status})`);
+    }
+
     currentConfig = await res.json();
     syncQuickForm(currentConfig);
-    document.getElementById('fullConfig').value = JSON.stringify(currentConfig, null, 2);
+    fullConfigEl.value = JSON.stringify(currentConfig, null, 2);
+    markJsonDirty(false);
+  }
+
+  function parseJsonFromEditor() {
+    return JSON.parse(fullConfigEl.value);
   }
 
   async function saveConfig() {
-    const result = document.getElementById('result');
-    const saveBtn = document.getElementById('saveBtn');
-    result.textContent = '';
+    setResult('', '');
     saveBtn.disabled = true;
 
     try {
-      let payload = JSON.parse(document.getElementById('fullConfig').value);
+      const payload = parseJsonFromEditor();
       applyQuickFormToConfig(payload);
 
       const res = await fetch('/api/config', {
@@ -115,34 +468,83 @@
       });
 
       if (res.ok) {
-        result.className = 'ok';
-        result.textContent = 'Configurazione salvata. Riavvia il servizio per applicare eventuali opzioni critiche.';
+        setResult('Configurazione salvata correttamente. Riavvia il servizio se necessario.', 'ok');
         await loadConfig();
         await loadStatus();
       } else {
-        const err = await res.json();
-        result.className = 'err';
-        result.textContent = 'Errore validazione:\n' + (err.errors || []).join('\n');
+        let details = '';
+        try {
+          const err = await res.json();
+          details = (err.errors || []).join('\n');
+        } catch {
+          details = `HTTP ${res.status}`;
+        }
+
+        setResult('Errore validazione:\n' + details, 'err');
       }
     } catch (e) {
-      result.className = 'err';
-      result.textContent = 'JSON non valido: ' + e.message;
+      setResult('Errore: ' + e.message, 'err');
     } finally {
       saveBtn.disabled = false;
     }
   }
 
+  function syncQuickFormFromJson() {
+    try {
+      const parsed = parseJsonFromEditor();
+      syncQuickForm(parsed);
+      currentConfig = parsed;
+      markJsonDirty(false);
+      setResult('Campi rapidi aggiornati dal JSON.', 'ok');
+    } catch (e) {
+      setResult('JSON non valido: ' + e.message, 'err');
+    }
+  }
+
+  function formatJson() {
+    try {
+      const parsed = parseJsonFromEditor();
+      fullConfigEl.value = JSON.stringify(parsed, null, 2);
+      markJsonDirty(false);
+      setResult('JSON formattato.', 'ok');
+    } catch (e) {
+      setResult('Impossibile formattare: JSON non valido.', 'err');
+    }
+  }
+
+  function startAutoRefresh() {
+    if (statusTimer) clearInterval(statusTimer);
+    statusTimer = setInterval(loadStatus, 5000);
+  }
+
   document.getElementById('reloadBtn').addEventListener('click', async () => {
-    await loadConfig();
-    await loadStatus();
+    try {
+      await loadConfig();
+      await loadStatus();
+      setResult('Dati ricaricati dal servizio.', 'ok');
+    } catch (e) {
+      setResult(e.message, 'err');
+    }
   });
 
+  document.getElementById('refreshStatusBtn').addEventListener('click', loadStatus);
   document.getElementById('saveBtn').addEventListener('click', saveConfig);
+  document.getElementById('formatBtn').addEventListener('click', formatJson);
+  document.getElementById('syncFromJsonBtn').addEventListener('click', syncQuickFormFromJson);
+  document.getElementById('closeHelpBtn').addEventListener('click', () => {
+    document.getElementById('helpBox').style.display = 'none';
+  });
+
+  fullConfigEl.addEventListener('input', () => markJsonDirty(true));
 
   (async function init() {
-    await loadConfig();
-    await loadStatus();
-    setInterval(loadStatus, 5000);
+    try {
+      await loadConfig();
+      await loadStatus();
+      startAutoRefresh();
+    } catch (e) {
+      setResult(e.message, 'err');
+    }
   })();
 </script>
 </body>
