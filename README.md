@@ -116,3 +116,14 @@ OBX|6|CWE|INTCTRL^Internal Control^99LAB-INT^Interpretation^99LOCAL|1|POS^POS^HL
 - Add health heartbeat file/event log probes for monitoring.
 - Add integration tests against a LIS simulator (e.g., Mirth listener).
 - Lock down service account permissions to least privilege.
+
+## Download EXE directly from GitHub
+
+You can now download a ready-to-use Windows package directly from GitHub Releases.
+
+1. Create and push a version tag (example: `v1.0.0`).
+2. GitHub Actions builds a self-contained `win-x64` EXE package.
+3. Download `Hl7Bridge-win-x64.zip` from the release page:
+   - `https://github.com/<OWNER>/<REPO>/releases/latest`
+
+Manual trigger is also available via **Actions -> Build Windows EXE -> Run workflow**; in that case the ZIP is published as a workflow artifact.
