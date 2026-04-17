@@ -14,45 +14,45 @@ public sealed class FileFingerprintDuplicateGuard(IOptions<BridgeOptions> option
     public bool IsDuplicate(string filePath)
     {
         var hash = ComputeHash(filePath);
-        var state = Load();
-        return state.Any(i => i.Hash == hash);
+        lock (_sync)
+        {
+            var state = LoadLocked();
+            return state.Any(i => i.Hash == hash);
+        }
     }
 
     public void MarkProcessed(string filePath)
     {
         var hash = ComputeHash(filePath);
-        var state = Load();
-        if (state.All(i => i.Hash != hash))
-        {
-            state.Add(new FingerprintEntry(hash, DateTime.UtcNow));
-        }
-
-        var threshold = DateTime.UtcNow.AddDays(-_retentionDays);
-        state = state.Where(i => i.ProcessedUtc >= threshold).ToList();
-        Save(state);
-    }
-
-    private List<FingerprintEntry> Load()
-    {
         lock (_sync)
         {
-            if (!File.Exists(_stateFilePath))
+            var state = LoadLocked();
+            if (state.All(i => i.Hash != hash))
             {
-                return [];
+                state.Add(new FingerprintEntry(hash, DateTime.UtcNow));
             }
 
-            var json = File.ReadAllText(_stateFilePath);
-            return JsonSerializer.Deserialize<List<FingerprintEntry>>(json) ?? [];
+            var threshold = DateTime.UtcNow.AddDays(-_retentionDays);
+            state = state.Where(i => i.ProcessedUtc >= threshold).ToList();
+            SaveLocked(state);
         }
     }
 
-    private void Save(List<FingerprintEntry> state)
+    private List<FingerprintEntry> LoadLocked()
     {
-        lock (_sync)
+        if (!File.Exists(_stateFilePath))
         {
-            var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(_stateFilePath, json);
+            return [];
         }
+
+        var json = File.ReadAllText(_stateFilePath);
+        return JsonSerializer.Deserialize<List<FingerprintEntry>>(json) ?? [];
+    }
+
+    private void SaveLocked(List<FingerprintEntry> state)
+    {
+        var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(_stateFilePath, json);
     }
 
     private static string ComputeHash(string filePath)

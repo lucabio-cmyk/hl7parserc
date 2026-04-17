@@ -30,7 +30,7 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
         _logger.LogError(exception, "Moved file to error: {File}", destination);
     }
 
-    public bool IsFileStable(string filePath, TimeSpan stableDuration, TimeSpan probeInterval, CancellationToken cancellationToken)
+    public async Task<bool> IsFileStableAsync(string filePath, TimeSpan stableDuration, TimeSpan probeInterval, CancellationToken cancellationToken)
     {
         var stableUntil = DateTime.UtcNow + stableDuration;
         long lastLength = -1;
@@ -53,7 +53,7 @@ public sealed class FileStateManager(IOptions<BridgeOptions> options, ILogger<Fi
                 stableUntil = DateTime.UtcNow + stableDuration;
             }
 
-            Thread.Sleep(probeInterval);
+            await Task.Delay(probeInterval, cancellationToken);
         }
 
         try

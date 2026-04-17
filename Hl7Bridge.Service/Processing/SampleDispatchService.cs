@@ -22,7 +22,6 @@ public sealed class SampleDispatchService(
         if (duplicateGuard.IsDuplicate(processingPath))
         {
             logger.LogWarning("Skipping duplicate file by fingerprint: {Path}", processingPath);
-            fileStateManager.MarkSent(processingPath);
             return;
         }
 

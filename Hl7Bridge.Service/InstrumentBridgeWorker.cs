@@ -50,7 +50,7 @@ public sealed class InstrumentBridgeWorker(
 
     private async Task ProcessIncomingAsync(string incomingPath, CancellationToken cancellationToken)
     {
-        if (!stateManager.IsFileStable(
+        if (!await stateManager.IsFileStableAsync(
                 incomingPath,
                 TimeSpan.FromMilliseconds(_options.Processing.StableFileWaitMs),
                 TimeSpan.FromMilliseconds(_options.Processing.StableFileProbeIntervalMs),

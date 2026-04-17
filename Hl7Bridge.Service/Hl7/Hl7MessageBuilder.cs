@@ -11,7 +11,7 @@ public sealed class Hl7MessageBuilder(IOptions<BridgeOptions> options) : IHl7Mes
 
     public string BuildOruR01(SampleResult sample, string messageControlId)
     {
-        var now = DateTime.Now;
+        var now = DateTime.UtcNow;
         var dtm = now.ToString("yyyyMMddHHmmss");
         var sb = new StringBuilder();
 

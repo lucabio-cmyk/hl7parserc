@@ -35,24 +35,24 @@ public sealed class MllpClient(IOptions<BridgeOptions> options, ILogger<MllpClie
 
         _logger.LogInformation("Sent HL7 message with payload length {Length} bytes.", body.Length);
 
-        var ack = await ReadMllpFrameAsync(stream, cancellationToken);
+        var ack = await ReadMllpFrameAsync(stream, _options.Lis.AckTimeoutMs, cancellationToken);
 
         if (!ack.Contains("MSA|AA|", StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogWarning("ACK is not AA. Ack payload: {Ack}", ack);
+            throw new IOException($"LIS returned non-AA ACK: {ack.Replace('\r', ' ')}");
         }
 
         return ack;
     }
 
-    private static async Task<string> ReadMllpFrameAsync(NetworkStream stream, CancellationToken cancellationToken)
+    private static async Task<string> ReadMllpFrameAsync(NetworkStream stream, int timeoutMs, CancellationToken cancellationToken)
     {
         using var ms = new MemoryStream();
         var buffer = new byte[2048];
         var inFrame = false;
 
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        linked.CancelAfter(TimeSpan.FromMilliseconds(10000));
+        linked.CancelAfter(TimeSpan.FromMilliseconds(timeoutMs));
 
         while (true)
         {
