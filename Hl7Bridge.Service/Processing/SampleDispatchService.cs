@@ -19,6 +19,7 @@ public sealed class SampleDispatchService(
 
     public async Task ProcessFileAsync(string processingPath, CancellationToken cancellationToken)
     {
+        logger.LogInformation("Dispatch started for file {File}.", processingPath);
         if (duplicateGuard.IsDuplicate(processingPath))
         {
             logger.LogWarning("Skipping duplicate file by fingerprint: {Path}", processingPath);
@@ -28,9 +29,11 @@ public sealed class SampleDispatchService(
 
         var workbook = await parser.ParseAsync(processingPath, cancellationToken);
         var dispatchItems = mapper.BuildDispatchItems(workbook);
+        logger.LogInformation("Built {Count} dispatch item(s) for file {File}.", dispatchItems.Count, processingPath);
 
         foreach (var item in dispatchItems)
         {
+            logger.LogInformation("Dispatching sample {Sample} from source file {File}.", item.Sample.Sample, item.Sample.SourceFileName);
             var sent = false;
             Exception? last = null;
 
@@ -63,5 +66,6 @@ public sealed class SampleDispatchService(
         }
 
         duplicateGuard.MarkProcessed(processingPath);
+        logger.LogInformation("Dispatch completed for file {File}.", processingPath);
     }
 }

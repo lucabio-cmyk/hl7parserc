@@ -17,6 +17,7 @@ public sealed class MllpClient(IOptions<BridgeOptions> options, ILogger<MllpClie
     public async Task<string> SendAndReceiveAckAsync(string hl7Payload, CancellationToken cancellationToken)
     {
         using var client = new TcpClient();
+        _logger.LogInformation("Connecting to LIS endpoint {Host}:{Port}.", _options.Lis.Host, _options.Lis.Port);
         await client.ConnectAsync(_options.Lis.Host, _options.Lis.Port, cancellationToken);
         client.ReceiveTimeout = _options.Lis.AckTimeoutMs;
         client.SendTimeout = _options.Lis.AckTimeoutMs;
@@ -34,8 +35,10 @@ public sealed class MllpClient(IOptions<BridgeOptions> options, ILogger<MllpClie
         await stream.FlushAsync(cancellationToken);
 
         _logger.LogInformation("Sent HL7 message with payload length {Length} bytes.", body.Length);
+        _logger.LogDebug("HL7 payload content: {Payload}", hl7Payload.Replace('\r', '\n'));
 
         var ack = await ReadMllpFrameAsync(stream, cancellationToken);
+        _logger.LogInformation("Received ACK payload length {Length} bytes.", ack.Length);
 
         if (!ack.Contains("MSA|AA|", StringComparison.OrdinalIgnoreCase))
         {
